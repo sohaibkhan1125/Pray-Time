@@ -20,8 +20,12 @@ const Footer = () => {
                             Providing accurate and reliable prayer times for the global Muslim community. Designed with devotion and precision.
                         </p>
                         <div className="flex space-x-4">
-                            {[Facebook, Twitter, Instagram].map((Icon, i) => (
-                                <a key={i} href="#" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-emerald-500 hover:text-white transition-all duration-300">
+                            {[
+                                { Icon: Facebook, url: 'https://facebook.com' },
+                                { Icon: Twitter, url: 'https://twitter.com' },
+                                { Icon: Instagram, url: 'https://instagram.com' }
+                            ].map(({ Icon, url }, i) => (
+                                <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:bg-emerald-500 hover:text-white transition-all duration-300">
                                     <Icon size={20} />
                                 </a>
                             ))}
@@ -34,7 +38,7 @@ const Footer = () => {
                         <ul className="space-y-4">
                             {['Home', 'Prayer Times', 'Qibla Finder', 'Islamic Calendar'].map((link) => (
                                 <li key={link}>
-                                    <a href="#" className="text-slate-400 hover:text-emerald-400 flex items-center group transition-colors">
+                                    <a href="/" className="text-slate-400 hover:text-emerald-400 flex items-center group transition-colors">
                                         <ChevronRight size={16} className="mr-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                                         {link}
                                     </a>
@@ -49,7 +53,7 @@ const Footer = () => {
                         <ul className="space-y-4">
                             {['Calculation Methods', 'Privacy Policy', 'Terms of Use', 'FAQ'].map((link) => (
                                 <li key={link}>
-                                    <a href="#" className="text-slate-400 hover:text-emerald-400 flex items-center group transition-colors">
+                                    <a href="/" className="text-slate-400 hover:text-emerald-400 flex items-center group transition-colors">
                                         <ChevronRight size={16} className="mr-2 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                                         {link}
                                     </a>
@@ -78,9 +82,9 @@ const Footer = () => {
                 <div className="mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0 text-slate-500 text-sm font-medium">
                     <p>© {currentYear} PrayTime App. All rights reserved.</p>
                     <div className="flex space-x-8">
-                        <a href="#" className="hover:text-emerald-400 transition-colors">Privacy</a>
-                        <a href="#" className="hover:text-emerald-400 transition-colors">Terms</a>
-                        <a href="#" className="hover:text-emerald-400 transition-colors">Cookies</a>
+                        <a href="/" className="hover:text-emerald-400 transition-colors">Privacy</a>
+                        <a href="/" className="hover:text-emerald-400 transition-colors">Terms</a>
+                        <a href="/" className="hover:text-emerald-400 transition-colors">Cookies</a>
                     </div>
                 </div>
             </div>
