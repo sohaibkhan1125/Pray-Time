@@ -1,23 +1,22 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from 'react';
+import Navbar from './components/Navbar';
+import Hero from './components/Hero';
+import PrayerTimes from './components/PrayerTimes';
+import FAQ from './components/FAQ';
+import Footer from './components/Footer';
 
 function App() {
+  const [locationId, setLocationId] = useState('4892'); // Default to Adana
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div className="min-h-screen bg-[#0f172a] text-white selection:bg-emerald-500/30">
+      <Navbar />
+      <main>
+        <Hero setLocationId={setLocationId} />
+        <PrayerTimes locationId={locationId} />
+        <FAQ />
+      </main>
+      <Footer />
     </div>
   );
 }
