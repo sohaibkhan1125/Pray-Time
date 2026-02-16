@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, MapPin, Clock, CheckCircle2, Cloud, Sun, Moon } from 'lucide-react';
+import { Search, MapPin, Cloud, Sun, Moon } from 'lucide-react';
 import { fetchPrayerTimes, searchLocations } from '../utils/api';
 import { convertTo12Hour } from '../utils/time';
 
 const Hero = ({ location, setLocation }) => {
     const [searchQuery, setSearchQuery] = useState('');
     const [suggestions, setSuggestions] = useState([]);
-    const [isLoading, setIsLoading] = useState(false);
+
     const [showSuggestions, setShowSuggestions] = useState(false);
     const [prayerData, setPrayerData] = useState(null);
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -15,7 +15,7 @@ const Hero = ({ location, setLocation }) => {
     useEffect(() => {
         const loadTimes = async () => {
             if (!location?.lat || !location?.lon) return;
-            setIsLoading(true);
+
             try {
                 const data = await fetchPrayerTimes({
                     lat: location.lat,
@@ -25,7 +25,7 @@ const Hero = ({ location, setLocation }) => {
             } catch (err) {
                 console.error("Failed to load prayer times", err);
             } finally {
-                setIsLoading(false);
+
             }
         };
         loadTimes();
