@@ -20,7 +20,7 @@ const Navbar = () => {
                     <div className="w-10 h-10 bg-emerald-500 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
                         <Moon className="text-white fill-white" size={24} />
                     </div>
-                    <span className="text-2xl font-bold tracking-tight">Pray<span className="text-emerald-500">Time</span></span>
+                    <span className="text-2xl font-bold tracking-tight text-white">Pray<span className="text-emerald-500">Time</span></span>
                 </div>
 
                 {/* Desktop Menu */}

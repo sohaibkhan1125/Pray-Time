@@ -1,28 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowRight, MapPin, Clock, Search, X, Loader2 } from 'lucide-react';
-import { fetchLocations } from '../utils/api';
+import { Search, MapPin, Clock, CheckCircle2, Cloud, Sun, Moon } from 'lucide-react';
+import { fetchPrayerTimes, searchLocations } from '../utils/api';
+import { convertTo12Hour } from '../utils/time';
 
-const Hero = ({ setLocationId }) => {
+const Hero = ({ location, setLocation }) => {
     const [searchQuery, setSearchQuery] = useState('');
-    const [locations, setLocations] = useState({ countries: {}, states: {}, cities: {} });
     const [suggestions, setSuggestions] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
     const [showSuggestions, setShowSuggestions] = useState(false);
+    const [prayerData, setPrayerData] = useState(null);
+    const [currentTime, setCurrentTime] = useState(new Date());
     const searchRef = useRef(null);
 
     useEffect(() => {
-        const loadLocations = async () => {
+        const loadTimes = async () => {
+            if (!location?.lat || !location?.lon) return;
             setIsLoading(true);
             try {
-                const data = await fetchLocations();
-                setLocations(data);
+                const data = await fetchPrayerTimes({
+                    lat: location.lat,
+                    lon: location.lon
+                });
+                setPrayerData(data);
             } catch (err) {
-                console.error("Failed to load locations", err);
+                console.error("Failed to load prayer times", err);
             } finally {
                 setIsLoading(false);
             }
         };
-        loadLocations();
+        loadTimes();
+    }, [location]);
+
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
     }, []);
 
     useEffect(() => {
@@ -35,154 +46,174 @@ const Hero = ({ setLocationId }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleSearch = (query) => {
+    const handleSearch = async (query) => {
         setSearchQuery(query);
         if (query.length < 2) {
             setSuggestions([]);
             return;
         }
 
-        const filtered = [];
-
-        // Search in cities (most likely what users search for)
-        Object.entries(locations.cities).forEach(([id, name]) => {
-            if (name.toLowerCase().includes(query.toLowerCase())) {
-                filtered.push({ id, name, type: 'City' });
-            }
-        });
-
-        // Search in states
-        Object.entries(locations.states).forEach(([id, name]) => {
-            if (name !== '-' && name.toLowerCase().includes(query.toLowerCase())) {
-                filtered.push({ id, name, type: 'State' });
-            }
-        });
-
-        // Search in countries
-        Object.entries(locations.countries).forEach(([id, name]) => {
-            if (name.toLowerCase().includes(query.toLowerCase())) {
-                filtered.push({ id, name, type: 'Country' });
-            }
-        });
-
-        setSuggestions(filtered.slice(0, 10)); // Limit to 10 suggestions
-        setShowSuggestions(true);
+        try {
+            const results = await searchLocations(query);
+            setSuggestions(results);
+            setShowSuggestions(true);
+        } catch (err) {
+            console.error("Search failed", err);
+        }
     };
 
     const handleSelect = (loc) => {
-        setLocationId(loc.id);
-        setSearchQuery(loc.name);
+        setLocation({
+            lat: loc.lat,
+            lon: loc.lon,
+            name: loc.fullDisplayName
+        });
+        setSearchQuery('');
         setShowSuggestions(false);
-        // Smooth scroll to results
-        document.getElementById('prayer-times')?.scrollIntoView({ behavior: 'smooth' });
     };
 
+    const times = prayerData?.times;
+    const hijri = prayerData?.date?.hijri;
+    const gregorian = prayerData?.date?.gregorian;
+    const qibla = prayerData?.qibla;
+
+    const hijriDate = hijri ? `${hijri.day} ${hijri.month.en} ${hijri.year}` : "Loading...";
+    const gregorianDate = gregorian ? `${gregorian.weekday.en}, ${gregorian.day} ${gregorian.month.en} ${gregorian.year}` : "Loading...";
+
+    const prayers = [
+        { name: 'Fajr', time: times?.Fajr || '05:36', icon: <Cloud className="text-blue-400" size={20} /> },
+        { name: 'Dhuhr', time: times?.Dhuhr || '12:36', icon: <Sun className="text-yellow-500" size={20} /> },
+        { name: 'Asr', time: times?.Asr || '15:48', icon: <Cloud className="text-blue-300" size={20} /> },
+        { name: 'Maghrib', time: times?.Maghrib || '18:16', icon: <Sun className="text-orange-500" size={20} /> },
+        { name: 'Isha', time: times?.Isha || '19:30', icon: <Moon className="text-indigo-400" size={20} /> },
+    ];
+
+    // Simple "Now" logic for frontend display
+    const currentHourMin = currentTime.getHours() * 60 + currentTime.getMinutes();
+    let activeIndex = -1;
+
+    if (times) {
+        const timesInMin = prayers.map(p => {
+            const [h, m] = p.time.split(':').map(Number);
+            return h * 60 + m;
+        });
+        for (let i = timesInMin.length - 1; i >= 0; i--) {
+            if (currentHourMin >= timesInMin[i]) {
+                activeIndex = i;
+                break;
+            }
+        }
+    }
+
     return (
-        <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden" id="home">
-            {/* Background Decorative Elements */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full -z-10">
-                <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-emerald-500/10 blur-[120px] rounded-full"></div>
-                <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-500/10 blur-[120px] rounded-full"></div>
-            </div>
-
-            <div className="max-w-7xl mx-auto px-6 text-center">
-                <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/10 px-4 py-2 rounded-full mb-8 backdrop-blur-sm">
-                    <Clock className="text-emerald-400" size={16} />
-                    <span className="text-sm font-medium text-slate-300">Accurate Prayer Times Worldwide</span>
-                </div>
-
-                <h1 className="text-5xl lg:text-7xl font-bold mb-8 tracking-tight">
-                    Stay Connected to Your <br />
-                    <span className="gradient-text">Spiritual Journey</span>
-                </h1>
-
-                <p className="text-lg text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-                    Experience the most precise prayer timings with our advanced calculation methods.
-                    Beautifully designed for your daily peace and devotion.
-                </p>
-
-                <div className="flex flex-col items-center justify-center space-y-6 max-w-2xl mx-auto" ref={searchRef}>
-                    <div className="relative w-full">
-                        <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                            {isLoading ? (
-                                <Loader2 className="text-emerald-500 animate-spin" size={20} />
-                            ) : (
-                                <Search className="text-slate-500" size={20} />
-                            )}
-                        </div>
-                        <input
-                            type="text"
-                            placeholder="Search your city, state or country..."
-                            className="w-full bg-white/5 border border-white/10 text-white pl-12 pr-12 py-5 rounded-2xl focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500/50 transition-all font-medium text-lg placeholder:text-slate-600 backdrop-blur-md"
-                            value={searchQuery}
-                            onChange={(e) => handleSearch(e.target.value)}
-                            onFocus={() => searchQuery.length >= 2 && setShowSuggestions(true)}
-                        />
-                        {searchQuery && (
-                            <button
-                                onClick={() => { setSearchQuery(''); setSuggestions([]); }}
-                                className="absolute inset-y-0 right-4 flex items-center text-slate-500 hover:text-white transition-colors"
-                            >
-                                <X size={20} />
-                            </button>
-                        )}
-
-                        {/* Suggestions Dropdown */}
-                        {showSuggestions && suggestions.length > 0 && (
-                            <div className="absolute top-full left-0 right-0 mt-3 bg-[#1e293b] border border-white/10 rounded-2xl overflow-hidden z-50 shadow-2xl backdrop-blur-xl">
-                                {suggestions.map((loc, index) => (
-                                    <button
-                                        key={`${loc.type}-${loc.id}-${index}`}
-                                        className="w-full flex items-center justify-between px-6 py-4 hover:bg-emerald-500/10 text-left transition-colors border-b border-white/5 last:border-0"
-                                        onClick={() => handleSelect(loc)}
-                                    >
-                                        <div className="flex items-center space-x-3">
-                                            <MapPin size={18} className="text-emerald-400" />
-                                            <span className="text-white font-medium">{loc.name}</span>
-                                        </div>
-                                        <span className="text-xs font-bold uppercase tracking-widest text-slate-500 bg-white/5 px-2 py-1 rounded">
-                                            {loc.type}
-                                        </span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-
-                        {showSuggestions && searchQuery.length >= 2 && suggestions.length === 0 && !isLoading && (
-                            <div className="absolute top-full left-0 right-0 mt-3 bg-[#1e293b] border border-white/10 rounded-2xl p-6 z-50 shadow-2xl text-center">
-                                <p className="text-slate-400">No locations found for "{searchQuery}"</p>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row items-center justify-center space-y-4 sm:space-y-0 sm:space-x-4 w-full">
-                        <button
-                            onClick={() => document.getElementById('prayer-times')?.scrollIntoView({ behavior: 'smooth' })}
-                            className="glow-button w-full sm:w-auto bg-emerald-500 hover:bg-emerald-600 text-white px-8 py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 transition-all"
-                        >
-                            <span>View Times</span>
-                            <ArrowRight size={20} />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Hero Stats/Features */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mt-20 pt-20 border-t border-white/5">
-                    {[
-                        { label: 'Calculations', value: 'Dynamic' },
-                        { label: 'Precision', value: 'High' },
-                        { label: 'Reliability', value: '100%' },
-                        { label: 'Themes', value: 'Modern' },
-                    ].map((stat, i) => (
-                        <div key={i} className="text-center">
-                            <div className="text-2xl font-bold text-white mb-1">{stat.value}</div>
-                            <div className="text-sm text-slate-500 uppercase tracking-widest">{stat.label}</div>
-                        </div>
+        <div className="relative pt-12 pb-24 bg-[#0f172a] overflow-hidden min-h-[600px] flex flex-col justify-center">
+            {/* Skyline Background Placeholder */}
+            <div className="absolute bottom-0 left-0 w-full h-[30%] opacity-10 pointer-events-none select-none overflow-hidden text-slate-400">
+                <div className="flex items-end justify-center space-x-4 h-full">
+                    {[40, 60, 80, 50, 90, 70, 100, 60, 40].map((h, i) => (
+                        <div key={i} className="bg-slate-600/50 w-12 rounded-t-lg" style={{ height: `${h}%` }}></div>
                     ))}
                 </div>
             </div>
+
+            <div className="max-w-7xl mx-auto px-6 w-full relative z-10 text-white">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-6">
+                    <div className="space-y-2">
+                        <p className="text-slate-400 font-medium">Prayer Times in</p>
+                        <h1 className="text-3xl md:text-4xl font-black text-white mb-6">
+                            {location.name}
+                        </h1>
+                        <div className="relative max-w-md" ref={searchRef}>
+                            <div className="flex items-center bg-white/5 rounded-full px-4 py-3 shadow-inner border border-white/10">
+                                <Search className="text-slate-400 mr-3" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Search city (e.g. Dubai, London)"
+                                    className="bg-transparent border-none focus:outline-none w-full text-white placeholder:text-slate-500"
+                                    value={searchQuery}
+                                    onChange={(e) => handleSearch(e.target.value)}
+                                    onFocus={() => setShowSuggestions(true)}
+                                />
+                            </div>
+                            {showSuggestions && suggestions.length > 0 && (
+                                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-700 rounded-2xl overflow-hidden z-50 shadow-2xl">
+                                    {suggestions.map((loc, index) => (
+                                        <button
+                                            key={`${loc.id}-${index}`}
+                                            className="w-full flex items-center px-4 py-3 hover:bg-white/5 text-left transition-colors border-b border-white/5 last:border-0"
+                                            onClick={() => handleSelect(loc)}
+                                        >
+                                            <MapPin size={16} className="text-[#00b894] mr-3 flex-shrink-0" />
+                                            <span className="text-slate-300 text-sm line-clamp-1">{loc.fullDisplayName}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div className="md:text-right space-y-4 w-full md:w-auto">
+                        <p className="text-slate-300 font-medium text-lg">
+                            {gregorianDate} | {hijriDate}
+                        </p>
+                        {qibla && (
+                            <div className="flex items-center md:justify-end gap-2 text-[#00b894] bg-white/5 px-4 py-2 rounded-full w-fit md:ml-auto border border-white/10">
+                                <MapPin size={18} fill="currentColor" className="text-white bg-[#00b894] rounded-full" />
+                                <span className="text-sm font-semibold text-white">
+                                    Qibla: {qibla.direction.degrees}° {qibla.direction.from}
+                                </span>
+                            </div>
+                        )}
+                        <div className="bg-[#482860] text-white px-6 py-3 rounded-full flex items-center gap-4 w-fit md:ml-auto shadow-lg">
+                            <span className="font-medium whitespace-nowrap">
+                                Imsak {times?.Imsak ? convertTo12Hour(times.Imsak).toLowerCase() : '...'} |
+                                Iftar {times?.Maghrib ? convertTo12Hour(times.Maghrib).toLowerCase() : '...'}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Prayer Cards Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 md:gap-6 mt-12">
+                    {prayers.map((prayer, index) => {
+                        const isNow = index === activeIndex;
+                        const time12hr = convertTo12Hour(prayer.time).toLowerCase().replace(' ', '');
+
+                        return (
+                            <div
+                                key={prayer.name}
+                                className={`
+                                    relative bg-white/5 backdrop-blur-sm border border-white/10 rounded-[32px] p-8 flex flex-col items-center justify-center transition-all duration-300
+                                    ${isNow ? 'ring-4 ring-[#00b894] scale-105 shadow-2xl z-20 bg-white/10' : 'shadow-md hover:bg-white/10'}
+                                `}
+                            >
+                                {isNow && (
+                                    <div className="absolute top-4 left-4 bg-[#00b894]/20 text-[#00b894] px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wider">
+                                        Now
+                                    </div>
+                                )}
+                                <div className="flex items-center gap-2 mb-4">
+                                    <span className="text-slate-400 font-bold uppercase text-xs tracking-widest">{prayer.name}</span>
+                                    {prayer.icon}
+                                </div>
+                                <div className="text-3xl md:text-4xl font-black text-white tracking-tight">
+                                    {time12hr}
+                                </div>
+                                {index === activeIndex + 1 && (
+                                    <div className="mt-4 text-emerald-400/80 text-sm font-medium">
+                                        Next Prayer
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
         </div>
+
     );
 };
 
 export default Hero;
+
